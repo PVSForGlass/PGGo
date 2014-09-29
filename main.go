@@ -6,6 +6,9 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"os"
 
 	"github.com/gosexy/redis"
@@ -13,8 +16,7 @@ import (
 
 var (
 	endpoint = flag.String("e", "unix://var/run/docker.sock", "Dockerd endpoint")
-	redisip = flag.String("r", os.Getenv("REDISIP"), "Redis ip to connect to")
-	redisport = flag.Int("s", 6379, "Redis port to connect to")
+	redisurlstr = flag.String("r", os.Getenv("REDIS_URL"), "Redis url to connect to")
 	addr = flag.String("p", os.Getenv("PORT"), "Address and port to serve dockerui")
 	assets = flag.String("a", ".", "Path to the assets")
 )
@@ -34,7 +36,16 @@ func CreateContext(w http.ResponseWriter, r *http.Request) {
 func main() {
 	flag.Parse()
 	
-	if err := con.Connect(*redisip, uint(*redisport)); err != nil {
+	redisurl, err := url.Parse(*redisurlstr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	redisConInfo := strings.Split(redisurl.Host, ":")
+	redisport, err := strconv.Atoi(redisConInfo[1])
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = con.Connect(redisConInfo[0], uint(redisport)); err != nil {
 		log.Fatal(err)
 	}
 
